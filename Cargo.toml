@@ -1,45 +1,18 @@
 [package]
 name = "rs_poker"
-version = "0.5.3-alpha.0"
+version = "0.5.4"
 authors = ["Elliott Clark <eclark@apache.org>"]
 keywords = ["cards", "poker"]
-categories = ["games"]
-homepage = "https://docs.rs/rs_poker"
-repository = "https://github.com/elliottneilclark/rs-poker"
-description = "A library to help with any Rust code dealing with poker. This includes card values, suits, hands, hand ranks, 5 card hand strength calculation, 7 card hand strength calulcation, and monte carlo game simulation helpers."
-readme = "README.md"
-license = "Apache-2.0"
+repository = "https://github.com/Enity/rs-poker"
 edition = "2018"
 
 [dependencies]
-rand = "0.6"
+rand = "0.7.0"
 
-[dev-dependencies]
-criterion = "0.2"
+[lib]
+name = "rs_poker"
+path = "src/lib.rs"
 
-[[bench]]
-name = "game"
-harness = false
-
-[[bench]]
-name = "holdem_starting_hand"
-harness = false
-
-[[bench]]
-name = "iter"
-harness = false
-
-[[bench]]
-name = "parse"
-harness = false
-
-[[bench]]
-name = "rank"
-harness = false
-
-[badges]
-travis-ci = { repository = "elliottneilclark/rs-poker" }
-
-[profile.release]
-debug = true
-lto = true
+[[bin]]
+name = "testbin"
+path = "src/bin.rs"

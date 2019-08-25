@@ -1,8 +1,11 @@
+use super::errors::StrParseErr;
 use crate::core::card::*;
+use std::collections::HashSet;
+use std::convert::TryFrom;
+use std::fmt;
 use std::ops::Index;
 use std::ops::{RangeFrom, RangeFull, RangeTo};
 use std::slice::Iter;
-use std::collections::HashSet;
 
 /// Struct to hold cards.
 ///
@@ -23,71 +26,9 @@ impl Hand {
     }
     /// Create the hand with specific hand.
     pub fn new_with_cards(cards: Vec<Card>) -> Hand {
-        Hand { cards: cards }
+        Hand { cards }
     }
 
-    /// From a str create a new hand.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use rs_poker::core::Hand;
-    /// let hand = Hand::new_from_str("AdKd").unwrap();
-    /// ```
-    ///
-    /// Anything that can't be parsed will return an error.
-    ///
-    /// ```
-    /// use rs_poker::core::Hand;
-    /// let hand = Hand::new_from_str("AdKx");
-    /// assert!(hand.is_err());
-    /// ```
-    pub fn new_from_str(hand_string: &str) -> Result<Hand, String> {
-        // Get the chars iterator.
-        let mut chars = hand_string.chars();
-        // Where we will put the cards
-        //
-        // We make the assumption that the hands will have 2 plus five cards.
-        let mut cards: HashSet<Card> = HashSet::with_capacity(7);
-
-        // Keep looping until we explicitly break
-        loop {
-            // Now try and get a char.
-            let vco = chars.next();
-            // If there was no char then we are done.
-            if vco == None {
-                break;
-            } else {
-                // If we got a value char then we should get a
-                // suit.
-                let sco = chars.next();
-                // Now try and parse the two chars that we have.
-                let v = r#try!(
-                    vco.and_then(Value::from_char)
-                        .ok_or_else(|| { format!("Couldn't parse value {}", vco.unwrap_or('?')) })
-                );
-                let s = r#try!(
-                    sco.and_then(Suit::from_char)
-                        .ok_or_else(|| { format!("Couldn't parse suit {}", sco.unwrap_or('?')) })
-                );
-
-                let c = Card { value: v, suit: s };
-                if !cards.insert(c) {
-                    // If this card is already in the set then error out.
-                    return Err(format!("This card has already been added {}", c));
-                }
-            }
-        }
-
-        if chars.next() != None {
-            return Err(String::from("Extra un-used chars found."));
-        }
-
-        let mut cv: Vec<Card> = cards.into_iter().collect();
-
-        cv.reserve(7);
-        Ok(Hand { cards: cv })
-    }
     /// Add card at to the hand.
     /// No verification is done at all.
     pub fn push(&mut self, c: Card) {
@@ -133,6 +74,7 @@ impl Index<RangeTo<usize>> for Hand {
         &self.cards[index]
     }
 }
+
 impl Index<RangeFrom<usize>> for Hand {
     type Output = [Card];
     fn index(&self, index: RangeFrom<usize>) -> &[Card] {
@@ -140,7 +82,54 @@ impl Index<RangeFrom<usize>> for Hand {
     }
 }
 
+impl fmt::Display for Hand {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let represent = self
+            .cards
+            .iter()
+            .map(|c| format!("{}", c))
+            .collect::<String>();
+        write!(f, "{}", represent)
+    }
+}
 
+impl TryFrom<&str> for Hand {
+    type Error = StrParseErr;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        if s.is_empty() {
+            return Ok(Hand{
+                cards: vec![]
+            })
+        }
+        if s.len() < 2 || s.len() % 2 != 0 {
+            return Err(StrParseErr);
+        }
+        let groups = s
+            .as_bytes()
+            .chunks(2)
+            .map(|s| unsafe { std::str::from_utf8_unchecked(s) })
+            .collect::<Vec<_>>();
+
+        let mut cards: HashSet<Card> = HashSet::with_capacity(7);
+        for g in groups.into_iter() {
+            let card = Card::try_from(g)?;
+            if !cards.insert(card) {
+                return Err(StrParseErr);
+            }
+        }
+
+        Ok(Hand {
+            cards: cards.into_iter().collect(),
+        })
+    }
+}
+
+impl From<Vec<Card>> for Hand {
+    fn from(cards: Vec<Card>) -> Self {
+        Self { cards }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -149,7 +138,6 @@ mod tests {
 
     #[test]
     fn test_add_card() {
-        assert!(true);
         let mut h = Hand::default();
         let c = Card {
             value: Value::Three,
@@ -180,18 +168,18 @@ mod tests {
     }
     #[test]
     fn test_parse_error() {
-        assert!(Hand::new_from_str("BAD").is_err());
-        assert!(Hand::new_from_str("Adx").is_err());
+        assert!(Hand::try_from("BAD").is_err());
+        assert!(Hand::try_from("Adx").is_err());
     }
 
     #[test]
     fn test_parse_one_hand() {
-        let h = Hand::new_from_str("Ad").unwrap();
+        let h = Hand::try_from("Ad").unwrap();
         assert_eq!(1, h.len())
     }
     #[test]
     fn test_parse_empty() {
-        let h = Hand::new_from_str("").unwrap();
+        let h = Hand::try_from("").unwrap();
         assert!(h.is_empty());
     }
 }

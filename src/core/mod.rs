@@ -1,5 +1,4 @@
-//! This is the core module. It exports the non-holdem
-//! related code.
+//! This is the core module.
 
 /// card.rs has value and suit.
 mod card;
@@ -17,17 +16,12 @@ mod card_iter;
 /// Make that functionality public.
 pub use self::card_iter::*;
 
-/// Deck is the normal 52 card deck.
 mod deck;
-/// Export `Deck`
-pub use self::deck::Deck;
-
-/// Flattened deck
-mod flat_deck;
-/// Export the trait and the result.
-pub use self::flat_deck::{FlatDeck, Flattenable};
+pub use self::deck::{Deck};
 
 /// 5 Card hand ranking code.
 mod rank;
 /// Export the trait and the results.
 pub use self::rank::{Rank, Rankable};
+
+pub mod errors;

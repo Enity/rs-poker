@@ -1,5 +1,6 @@
-use crate::core::hand::Hand;
-use crate::core::card::Card;
+use super::hand::Hand;
+use super::card::Card;
+use std::convert::TryFrom;
 
 /// All the different possible hand ranks.
 /// For each hand rank the u32 corresponds to
@@ -29,7 +30,7 @@ pub enum Rank {
 }
 
 /// Bit mask for the wheel (Ace, two, three, four, five)
-const WHEEL: u32 = 0b1000000001111;
+const WHEEL: u32 = 0b1_0000_0000_1111;
 /// Given a bitset of hand ranks. This method
 /// will determine if there's a staright, and will give the
 /// rank. Wheel is the lowest, broadway is the highest value.
@@ -64,10 +65,10 @@ fn rank_straight(value_set: u32) -> Option<u32> {
     let idx = left.leading_zeros();
     // If this isn't all zeros then we found a straight
     if idx < 32 {
-        return Some(32 - 4 - idx);
+        Some(32 - 4 - idx)
     } else if value_set & WHEEL == WHEEL {
         // Check to see if this is the wheel. It's pretty unlikely.
-        return Some(0);
+        Some(0)
     } else {
         // We found nothing.
         None
@@ -107,8 +108,9 @@ pub trait Rankable {
     /// # Examples
     /// ```
     /// use rs_poker::core::{Hand, Rank, Rankable};
+    /// use std::convert::TryFrom;
     ///
-    /// let hand = Hand::new_from_str("2h2d8d8sKd6sTh").unwrap();
+    /// let hand = Hand::try_from("2h2d8d8sKd6sTh").unwrap();
     /// let rank = hand.rank();
     /// assert!(Rank::TwoPair(0) <= rank);
     /// assert!(Rank::TwoPair(u32::max_value()) >= rank);
@@ -324,7 +326,7 @@ mod tests {
 
     #[test]
     fn test_high_card_hand() {
-        let hand = Hand::new_from_str("Ad8h9cTc5c").unwrap();
+        let hand = Hand::try_from("Ad8h9cTc5c").unwrap();
         let rank = 1 << Value::Ace as u32 | 1 << Value::Eight as u32 | 1 << Value::Nine as u32
             | 1 << Value::Ten as u32 | 1 << Value::Five as u32;
 
@@ -333,7 +335,7 @@ mod tests {
 
     #[test]
     fn test_flush() {
-        let hand = Hand::new_from_str("Ad8d9dTd5d").unwrap();
+        let hand = Hand::try_from("Ad8d9dTd5d").unwrap();
         let rank = 1 << Value::Ace as u32 | 1 << Value::Eight as u32 | 1 << Value::Nine as u32
             | 1 << Value::Ten as u32 | 1 << Value::Five as u32;
 
@@ -342,7 +344,7 @@ mod tests {
 
     #[test]
     fn test_full_house() {
-        let hand = Hand::new_from_str("AdAc9d9c9s").unwrap();
+        let hand = Hand::try_from("AdAc9d9c9s").unwrap();
         let rank = (1 << (Value::Nine as u32)) << 13 | 1 << (Value::Ace as u32);
         assert!(Rank::FullHouse(rank) == hand.rank_five());
     }
@@ -350,7 +352,7 @@ mod tests {
     #[test]
     fn test_two_pair() {
         // Make a two pair hand.
-        let hand = Hand::new_from_str("AdAc9D9cTs").unwrap();
+        let hand = Hand::try_from("AdAc9d9cTs").unwrap();
         let rank =
             (1 << Value::Ace as u32 | 1 << Value::Nine as u32) << 13 | 1 << Value::Ten as u32;
         assert!(Rank::TwoPair(rank) == hand.rank_five());
@@ -358,7 +360,7 @@ mod tests {
 
     #[test]
     fn test_one_pair() {
-        let hand = Hand::new_from_str("AdAc9d8cTs").unwrap();
+        let hand = Hand::try_from("AdAc9d8cTs").unwrap();
         let rank = (1 << Value::Ace as u32) << 13 | 1 << Value::Nine as u32
             | 1 << Value::Eight as u32 | 1 << Value::Ten as u32;
 
@@ -367,7 +369,7 @@ mod tests {
 
     #[test]
     fn test_four_of_a_kind() {
-        let hand = Hand::new_from_str("AdAcAsAhTs").unwrap();
+        let hand = Hand::try_from("AdAcAsAhTs").unwrap();
         assert!(
             Rank::FourOfAKind((1 << (Value::Ace as u32) << 13) | 1 << (Value::Ten as u32))
                 == hand.rank_five()
@@ -376,20 +378,20 @@ mod tests {
 
     #[test]
     fn test_wheel() {
-        let hand = Hand::new_from_str("Ad2c3s4h5s").unwrap();
+        let hand = Hand::try_from("Ad2c3s4h5s").unwrap();
         assert!(Rank::Straight(0) == hand.rank_five());
     }
 
 
     #[test]
     fn test_straight() {
-        let hand = Hand::new_from_str("2c3s4h5s6d").unwrap();
+        let hand = Hand::try_from("2c3s4h5s6d").unwrap();
         assert!(Rank::Straight(1) == hand.rank_five());
     }
 
     #[test]
     fn test_three_of_a_kind() {
-        let hand = Hand::new_from_str("2c2s2h5s6d").unwrap();
+        let hand = Hand::try_from("2c2s2h5s6d").unwrap();
         let rank =
             (1 << (Value::Two as u32)) << 13 | 1 << (Value::Five as u32) | 1 << (Value::Six as u32);
         assert!(Rank::ThreeOfAKind(rank) == hand.rank_five());
@@ -397,7 +399,7 @@ mod tests {
 
     #[test]
     fn test_rank_seven_straight_flush() {
-        let h = Hand::new_from_str("AdKdQdJdTd9d8d").unwrap();
+        let h = Hand::try_from("AdKdQdJdTd9d8d").unwrap();
         assert_eq!(Rank::StraightFlush(9), h.rank());
     }
 
@@ -405,7 +407,7 @@ mod tests {
     fn test_rank_seven_straight_flush_wheel() {
         // Make sure that we pick up the wheel straight flush
         // over different straight.
-        let h = Hand::new_from_str("2d3d4d5d6h7cAd").unwrap();
+        let h = Hand::try_from("2d3d4d5d6h7cAd").unwrap();
         assert_eq!(Rank::StraightFlush(0), h.rank());
     }
     #[test]
@@ -424,7 +426,7 @@ mod tests {
         for (idx, s) in straights.iter().enumerate() {
             assert_eq!(
                 Rank::Straight(idx as u32 + 1),
-                Hand::new_from_str(s).unwrap().rank()
+                Hand::try_from(*s).unwrap().rank()
             );
         }
     }
@@ -432,13 +434,13 @@ mod tests {
 
     #[test]
     fn test_rank_seven_find_best_with_wheel() {
-        let h = Hand::new_from_str("6dKdAd2d5d4d3d").unwrap();
+        let h = Hand::try_from("6dKdAd2d5d4d3d").unwrap();
         assert_eq!(Rank::StraightFlush(1), h.rank());
     }
 
     #[test]
     fn test_rank_seven_four_kind() {
-        let h = Hand::new_from_str("2s2h2d2cKd9h4s").unwrap();
+        let h = Hand::try_from("2s2h2d2cKd9h4s").unwrap();
         let four_rank = (1 << Value::Two as u32) << 13;
         let low_rank = 1 << Value::King as u32;
         assert_eq!(Rank::FourOfAKind(four_rank | low_rank), h.rank());
@@ -447,7 +449,7 @@ mod tests {
     #[test]
     fn test_rank_seven_four_plus_set() {
         // Four of a kind plus a set.
-        let h = Hand::new_from_str("2s2h2d2c8d8s8c").unwrap();
+        let h = Hand::try_from("2s2h2d2c8d8s8c").unwrap();
         let four_rank = (1 << Value::Two as u32) << 13;
         let low_rank = 1 << Value::Eight as u32;
         assert_eq!(Rank::FourOfAKind(four_rank | low_rank), h.rank());
@@ -456,7 +458,7 @@ mod tests {
     #[test]
     fn test_rank_seven_full_house_two_sets() {
         // We have two sets use the highest set.
-        let h = Hand::new_from_str("As2h2d2c8d8s8c").unwrap();
+        let h = Hand::try_from("As2h2d2c8d8s8c").unwrap();
         let set_rank = (1 << Value::Eight as u32) << 13;
         let low_rank = 1 << Value::Two as u32;
         assert_eq!(Rank::FullHouse(set_rank | low_rank), h.rank());
@@ -465,7 +467,7 @@ mod tests {
     #[test]
     fn test_rank_seven_full_house_two_pair() {
         // Test to make sure that we pick the best pair.
-        let h = Hand::new_from_str("2h2d2c8d8sKdKs").unwrap();
+        let h = Hand::try_from("2h2d2c8d8sKdKs").unwrap();
         let set_rank = (1 << Value::Two as u32) << 13;
         let low_rank = 1 << Value::King as u32;
         assert_eq!(Rank::FullHouse(set_rank | low_rank), h.rank());
@@ -473,7 +475,7 @@ mod tests {
 
     #[test]
     fn test_two_pair_from_three_pair() {
-        let h = Hand::new_from_str("2h2d8d8sKdKsTh").unwrap();
+        let h = Hand::try_from("2h2d8d8sKdKsTh").unwrap();
         let pair_rank = ((1 << Value::King as u32) | (1 << Value::Eight as u32)) << 13;
         let low_rank = 1 << Value::Ten as u32;
         assert_eq!(Rank::TwoPair(pair_rank | low_rank), h.rank());
@@ -482,7 +484,7 @@ mod tests {
 
     #[test]
     fn test_rank_seven_two_pair() {
-        let h = Hand::new_from_str("2h2d8d8sKd6sTh").unwrap();
+        let h = Hand::try_from("2h2d8d8sKd6sTh").unwrap();
         let pair_rank = ((1 << Value::Two as u32) | (1 << Value::Eight as u32)) << 13;
         let low_rank = 1 << Value::King as u32;
         assert_eq!(Rank::TwoPair(pair_rank | low_rank), h.rank());

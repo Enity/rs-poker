@@ -1,6 +1,8 @@
 use std::mem;
 use std::cmp;
 use std::fmt;
+use super::errors::{StrParseErr};
+use std::convert::{TryFrom};
 
 /// Card rank or value.
 /// This is basically the face value - 2
@@ -32,6 +34,78 @@ pub enum Value {
     King = 11,
     /// A
     Ace = 12,
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use Value::*;
+        match *self {
+            Two => write!(f, "2"),
+            Three => write!(f, "3"),
+            Four => write!(f, "4"),
+            Five => write!(f, "5"),
+            Six => write!(f, "6"),
+            Seven => write!(f, "7"),
+            Eight => write!(f, "8"),
+            Nine => write!(f, "9"),
+            Ten => write!(f, "T"),
+            Jack => write!(f, "J"),
+            Queen => write!(f, "Q"),
+            King => write!(f, "K"),
+            Ace => write!(f, "A"),
+        }
+    }
+}
+
+impl TryFrom<char> for Value {
+    type Error = StrParseErr;
+
+    fn try_from(c: char) -> Result<Self, Self::Error> {
+        use Value::*;
+        match c {
+            '2' => Ok(Two),
+            '3' => Ok(Three),
+            '4' => Ok(Four),
+            '5' => Ok(Five),
+            '6' => Ok(Six),
+            '7' => Ok(Seven),
+            '8' => Ok(Eight),
+            '9' => Ok(Nine),
+            'T' => Ok(Ten),
+            'J' => Ok(Jack),
+            'Q' => Ok(Queen),
+            'K' => Ok(King),
+            'A' => Ok(Ace),
+            _ => Err(StrParseErr),
+        }
+    }
+}
+
+impl From<u8> for Value {
+    fn from(v: u8) -> Self {
+         unsafe { mem::transmute(cmp::min(v, Value::Ace as u8)) }
+    }
+}
+
+impl Into<char> for Value {
+    fn into(self) -> char {
+        use Value::*;
+        match self {
+            Ace => 'A',
+            King => 'K',
+            Queen => 'Q',
+            Jack => 'J',
+            Ten => 'T',
+            Nine => '9',
+            Eight => '8',
+            Seven => '7',
+            Six => '6',
+            Five => '5',
+            Four => '4',
+            Three => '3',
+            Two => '2',
+        }
+    }
 }
 
 /// Constant of all the values.
@@ -72,66 +146,17 @@ impl Value {
         VALUES
     }
 
-    /// Given a character parse that char into a value.
-    /// Case is ignored as long as the char is in the ascii range (It should be).
-    /// @returns None if there's no value there.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use rs_poker::core::Value;
-    ///
-    /// assert_eq!(Value::Ace, Value::from_char('A').unwrap());
-    /// ```
-    pub fn from_char(c: char) -> Option<Value> {
-        match c.to_ascii_uppercase() {
-            'A' => Some(Value::Ace),
-            'K' => Some(Value::King),
-            'Q' => Some(Value::Queen),
-            'J' => Some(Value::Jack),
-            'T' => Some(Value::Ten),
-            '9' => Some(Value::Nine),
-            '8' => Some(Value::Eight),
-            '7' => Some(Value::Seven),
-            '6' => Some(Value::Six),
-            '5' => Some(Value::Five),
-            '4' => Some(Value::Four),
-            '3' => Some(Value::Three),
-            '2' => Some(Value::Two),
-            _ => None,
-        }
-    }
-
-    /// Convert this Value to a char.
-    pub fn to_char(&self) -> char {
-        match *self {
-            Value::Ace => 'A',
-            Value::King => 'K',
-            Value::Queen => 'Q',
-            Value::Jack => 'J',
-            Value::Ten => 'T',
-            Value::Nine => '9',
-            Value::Eight => '8',
-            Value::Seven => '7',
-            Value::Six => '6',
-            Value::Five => '5',
-            Value::Four => '4',
-            Value::Three => '3',
-            Value::Two => '2',
-        }
-    }
-
     /// How card ranks seperate the two values.
     ///
     /// # Examples
     ///
     /// ```
     /// use rs_poker::core::Value;
-    /// assert_eq!(1, Value::Ace.gap(&Value::King));
+    /// assert_eq!(1, Value::Ace.gap(Value::King));
     /// ```
-    pub fn gap(&self, other: &Value) -> u8 {
-        let min = cmp::min(*self as u8, *other as u8);
-        let max = cmp::max(*self as u8, *other as u8);
+    pub fn gap(self, other: Value) -> u8 {
+        let min = cmp::min(self as u8, other as u8);
+        let max = cmp::max(self as u8, other as u8);
         max - min
     }
 }
@@ -149,6 +174,33 @@ pub enum Suit {
     Heart = 2,
     /// Diamonds
     Diamond = 3,
+}
+
+impl fmt::Display for Suit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use Suit::*;
+        match *self {
+            Heart => write!(f, "♥"),
+            Diamond => write!(f, "♦"),
+            Spade => write!(f, "♠"),
+            Club => write!(f, "♣"),
+        }
+    }
+}
+
+impl TryFrom<char> for Suit {
+    type Error = StrParseErr;
+
+    fn try_from(c: char) -> Result<Self, Self::Error> {
+        use Suit::*;
+        match c {
+            'h' => Ok(Heart),
+            's' => Ok(Spade),
+            'c' => Ok(Club),
+            'd' => Ok(Diamond),
+            _ => Err(StrParseErr),
+        }
+    }
 }
 
 /// All of the `Suit`'s. This is what `Suit::suits()` returns.
@@ -170,57 +222,6 @@ impl Suit {
     pub fn suits() -> [Suit; 4] {
         SUITS
     }
-
-    /// Translate a Suit from a u8. If the u8 is above the expected value
-    /// then Diamond will be the result.
-    ///
-    /// #Examples
-    /// ```
-    /// use rs_poker::core::Suit;
-    /// let idx = Suit::Club as u8;
-    /// assert_eq!(Suit::Club, Suit::from_u8(idx));
-    /// ```
-    pub fn from_u8(s: u8) -> Suit {
-        unsafe { mem::transmute(cmp::min(s, Suit::Diamond as u8)) }
-    }
-
-    /// Given a character that represents a suit try and parse that char.
-    /// If the char can represent a suit return it.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use rs_poker::core::Suit;
-    ///
-    /// let s = Suit::from_char('s');
-    /// assert_eq!(Some(Suit::Spade), s);
-    /// ```
-    ///
-    /// ```
-    /// use rs_poker::core::Suit;
-    ///
-    /// let s = Suit::from_char('X');
-    /// assert_eq!(None, s);
-    /// ```
-    pub fn from_char(s: char) -> Option<Suit> {
-        match s.to_ascii_lowercase() {
-            'd' => Some(Suit::Diamond),
-            's' => Some(Suit::Spade),
-            'h' => Some(Suit::Heart),
-            'c' => Some(Suit::Club),
-            _ => None,
-        }
-    }
-
-    /// This Suit to a character.
-    pub fn to_char(&self) -> char {
-        match *self {
-            Suit::Diamond => 'd',
-            Suit::Spade => 's',
-            Suit::Heart => 'h',
-            Suit::Club => 'c',
-        }
-    }
 }
 
 /// The main struct of this library.
@@ -235,7 +236,21 @@ pub struct Card {
 
 impl fmt::Display for Card {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}", self.value.to_char(), self.suit.to_char())
+        write!(f, "|{}_{}|", self.value, self.suit)
+    }
+}
+
+impl TryFrom<&str> for Card {
+    type Error = StrParseErr;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        if s.len() != 2 {
+            return Err(StrParseErr);
+        }
+        let mut chars = s.chars();
+        let value = Value::try_from(chars.next().unwrap())?;
+        let suit = Suit::try_from(chars.next().unwrap())?;
+        Ok(Card{ suit, value })
     }
 }
 
@@ -270,8 +285,6 @@ mod tests {
             suit: Suit::Club,
         };
 
-        // Make sure that equals works
-        assert!(c1 == c1);
         // Make sure that the values are ordered
         assert!(c1 < c2);
         assert!(c2 > c1);
@@ -313,17 +326,17 @@ mod tests {
     #[test]
     fn test_gap() {
         // test on gap
-        assert!(1 == Value::Ace.gap(&Value::King));
+        assert!(1 == Value::Ace.gap(Value::King));
         // test no gap at the high end
-        assert!(0 == Value::Ace.gap(&Value::Ace));
+        assert!(0 == Value::Ace.gap(Value::Ace));
         // test no gap at the low end
-        assert!(0 == Value::Two.gap(&Value::Two));
+        assert!(0 == Value::Two.gap(Value::Two));
         // Test one gap at the low end
-        assert!(1 == Value::Two.gap(&Value::Three));
+        assert!(1 == Value::Two.gap(Value::Three));
         // test that ordering doesn't matter
-        assert!(1 == Value::Three.gap(&Value::Two));
+        assert!(1 == Value::Three.gap(Value::Two));
         // Test things that are far apart
-        assert!(12 == Value::Ace.gap(&Value::Two));
-        assert!(12 == Value::Two.gap(&Value::Ace));
+        assert!(12 == Value::Ace.gap(Value::Two));
+        assert!(12 == Value::Two.gap(Value::Ace));
     }
 }

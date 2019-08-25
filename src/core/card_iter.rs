@@ -24,9 +24,9 @@ impl<'a> CardIter<'a> {
             idx[num_cards - 1] -= 1;
         }
         CardIter {
-            possible_cards: possible_cards,
-            idx: idx,
-            num_cards: num_cards,
+            possible_cards,
+            idx,
+            num_cards,
         }
     }
 }
@@ -84,26 +84,11 @@ impl<'a> Iterator for CardIter<'a> {
     }
 }
 
-/// This is useful for trying every possible 5 card hand
-///
-/// Probably not something that's going to be done in real
-/// use cases, but still not bad.
-impl<'a> IntoIterator for &'a FlatDeck {
-    type Item = Vec<Card>;
-    type IntoIter = CardIter<'a>;
-
-    fn into_iter(self) -> CardIter<'a> {
-        CardIter::new(&self[..], 5)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::core::card::Card;
     use crate::core::hand::Hand;
-    use crate::core::deck::*;
-    use crate::core::flat_deck::*;
 
     #[test]
     fn test_iter_one() {
@@ -144,11 +129,5 @@ mod tests {
             assert_eq!(2, cards.len());
             assert!(cards[0] != cards[1]);
         }
-    }
-
-    #[test]
-    fn test_iter_deck() {
-        let d: FlatDeck = Deck::default().into();
-        assert_eq!(2598960, d.into_iter().count());
     }
 }
